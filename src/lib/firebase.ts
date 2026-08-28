@@ -13,8 +13,11 @@ const getAuthDomain = (): string => {
   return hostname;
 };
 
+// Safe API key string for static build / SSR when build environment does not supply environment variables
+const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyRawMilkBuildPlaceholderApiKeyKey00';
+
 const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
+  apiKey,
   authDomain: getAuthDomain(),
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'raw-milk-1e36d',
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || 'raw-milk-1e36d.firebasestorage.app',
@@ -23,11 +26,18 @@ const firebaseConfig = {
   measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID
 };
 
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
+// Log safe diagnostic configuration status without printing secret key values
+if (typeof window !== 'undefined' || process.env.NODE_ENV === 'development') {
+  console.log('Firebase project configured:', !!(process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || 'raw-milk-1e36d'));
+  console.log('Firebase API key configured:', !!process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
+  console.log('Firebase auth domain configured:', !!getAuthDomain());
+}
+
+export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 
-if (typeof window !== 'undefined') {
+if (typeof window !== 'undefined' && process.env.NEXT_PUBLIC_FIREBASE_API_KEY) {
   setPersistence(auth, browserLocalPersistence).catch((err) => {
     console.error('Firebase persistence initialization error:', err);
   });
@@ -39,3 +49,4 @@ googleProvider.addScope('profile');
 googleProvider.setCustomParameters({ prompt: 'select_account' });
 
 export default app;
+

@@ -33,6 +33,7 @@ yarn-error.log*
 Thumbs.db
 .idea/
 .vscode/
+*.tsbuildinfo
 
 # scratch test scripts
 scratch_*.js
