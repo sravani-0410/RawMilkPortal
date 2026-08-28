@@ -3,14 +3,7 @@ import { getAuth, GoogleAuthProvider, setPersistence, browserLocalPersistence } 
 import { getFirestore } from 'firebase/firestore';
 
 const getAuthDomain = (): string => {
-  if (typeof window === 'undefined') {
-    return process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'raw-milk-1e36d.firebaseapp.com';
-  }
-  const hostname = window.location.hostname;
-  if (hostname === 'localhost' || hostname.startsWith('127.')) {
-    return process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'raw-milk-1e36d.firebaseapp.com';
-  }
-  return hostname;
+  return process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || 'raw-milk-1e36d.firebaseapp.com';
 };
 
 // Safe API key string for static build / SSR when build environment does not supply environment variables

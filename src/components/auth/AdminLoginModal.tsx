@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import { ShieldCheck, Lock, Mail, AlertCircle, LogIn, Milk, ArrowRight } from 'lucide-react';
 
@@ -16,10 +16,13 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
   const [error, setError] = useState<string | null>(null);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [passLoading, setPassLoading] = useState(false);
+  const isSubmittingRef = useRef(false);
 
   if (!isOpen) return null;
 
   const handleGoogleClick = async () => {
+    if (loading || googleLoading || isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     setError(null);
     setGoogleLoading(true);
     try {
@@ -28,6 +31,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
     } catch (err: any) {
       setError(err.message || 'Google Sign-in failed.');
     } finally {
+      isSubmittingRef.current = false;
       setGoogleLoading(false);
     }
   };

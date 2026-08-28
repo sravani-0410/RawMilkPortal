@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useState, useRef } from 'react';
 import { 
   signInWithPopup,
   signOut, 
@@ -37,6 +37,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null);
   const [user, setUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
+  const isSigningInRef = useRef<boolean>(false);
 
   // Restore saved session or Firebase auth state
   useEffect(() => {
@@ -102,6 +103,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const loginWithGoogle = async () => {
+    if (isSigningInRef.current) return;
+    isSigningInRef.current = true;
     setLoading(true);
     try {
       const result = await signInWithPopup(auth, googleProvider);
@@ -149,9 +152,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         errorMsg = 'Google Sign-in popup was closed before completing.';
       } else if (err.code === 'auth/popup-blocked') {
         errorMsg = 'Google Sign-in popup was blocked by your browser. Please allow popups and try again.';
+      } else if (err.code === 'auth/cancelled-popup-request') {
+        errorMsg = 'A previous Google Sign-in request was cancelled.';
       }
       throw new Error(errorMsg);
     } finally {
+      isSigningInRef.current = false;
       setLoading(false);
     }
   };
