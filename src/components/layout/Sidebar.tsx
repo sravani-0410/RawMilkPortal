@@ -20,8 +20,10 @@ import {
   MapPin,
   FileText,
   Milk,
+  Clock,
   X
 } from 'lucide-react';
+import { useAnalytics } from '@/context/AnalyticsContext';
 
 interface SidebarProps {
   mobileOpen?: boolean;
@@ -39,6 +41,7 @@ const NAV_SECTIONS = [
     title: 'CUSTOMERS',
     items: [
       { href: '/customer-activity', label: 'Customer Activity', icon: Users },
+      { href: '/slot-requests', label: 'Slot Requests', icon: Clock, isSlotRequest: true },
       { href: '/inactive-customers', label: 'Inactive Customers', icon: UserX },
       { href: '/customer-360', label: 'Customer 360', icon: Search }
     ]
@@ -88,6 +91,11 @@ const NAV_SECTIONS = [
 
 export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) => {
   const pathname = usePathname();
+  const analyticsCtx = useAnalytics();
+  const slotRequests = analyticsCtx.data?.slotRequests || [];
+  const newRequestsCount = slotRequests.filter(
+    (r) => (r.status || 'NEW').toUpperCase().trim() === 'NEW'
+  ).length;
 
   const content = (
     <div className="flex flex-col h-full bg-slate-900 text-slate-100 border-r border-slate-800 shadow-xl">
@@ -132,14 +140,25 @@ export const Sidebar: React.FC<SidebarProps> = ({ mobileOpen, onCloseMobile }) =
                   key={item.href}
                   href={item.href}
                   onClick={() => onCloseMobile && onCloseMobile()}
-                  className={`flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 ${
+                  className={`flex items-center justify-between px-3 py-2 rounded-xl text-xs font-semibold transition-all duration-150 ${
                     isActive
                       ? 'bg-sky-600/20 text-sky-400 border-l-4 border-sky-500 font-bold pl-2 shadow-sm'
                       : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-sky-400' : 'text-slate-400'}`} />
-                  <span>{item.label}</span>
+                  <div className="flex items-center gap-3">
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-sky-400' : 'text-slate-400'}`} />
+                    <span>{item.label}</span>
+                  </div>
+                  {item.isSlotRequest && (
+                    <span className={`px-2 py-0.5 text-[10px] font-extrabold rounded-full transition-colors ${
+                      newRequestsCount > 0
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/30 animate-pulse'
+                        : 'bg-slate-800 text-slate-400 border border-slate-700'
+                    }`}>
+                      New: {newRequestsCount}
+                    </span>
+                  )}
                 </Link>
               );
             })}

@@ -180,13 +180,15 @@ export default function OverviewPage() {
           icon={Milk}
           colorScheme="blue"
         />
-        <KpiCard
-          title="Today's Skipped"
-          value={metrics.todaySkipped.toLocaleString()}
-          subtitle="Delivery skips requested today"
-          icon={XCircle}
-          colorScheme="rose"
-        />
+        <Link href="/slot-requests" className="block transition-transform hover:-translate-y-0.5">
+          <KpiCard
+            title="Slot Requests"
+            value={(data?.slotRequests?.length || 0).toLocaleString()}
+            subtitle={`New: ${data?.slotRequests?.filter(r => (r.status || 'NEW').toUpperCase().trim() === 'NEW').length || 0} Pending Requests`}
+            icon={Clock}
+            colorScheme="indigo"
+          />
+        </Link>
       </div>
 
       {/* Silver vs Gold Summary Cards */}

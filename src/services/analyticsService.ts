@@ -125,6 +125,21 @@ export interface RawReview {
   timestamp?: string;
 }
 
+export interface RawSlotRequest {
+  _id?: string;
+  id?: string;
+  customerId?: string;
+  name?: string;
+  phone?: string;
+  email?: string;
+  preferredDate?: string;
+  preferredTime?: string;
+  address?: string;
+  status?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 // Safe Date Range Evaluator
 export function getBoundsForRange(filter: DateFilter): { start: Date; end: Date; label: string } {
   const now = new Date();
@@ -236,6 +251,7 @@ export interface AnalyticsDataStore {
   walletTransactions: RawWalletTransaction[];
   skippedDeliveries: RawSkippedDelivery[];
   reviews: RawReview[];
+  slotRequests: RawSlotRequest[];
   fetchedAt: Date;
 }
 
@@ -250,6 +266,7 @@ export interface DiagnosticsState {
     walletTransactions: { status: 'OK' | 'FAILED'; count: number; error?: string };
     skippedDeliveries: { status: 'OK' | 'FAILED'; count: number; error?: string };
     reviews: { status: 'OK' | 'FAILED'; count: number; error?: string };
+    slotRequests: { status: 'OK' | 'FAILED'; count: number; error?: string };
   };
 }
 
@@ -278,14 +295,15 @@ export async function fetchAllAnalyticsRawData(forceRefresh = false): Promise<An
   };
 
   try {
-    const [users, products, subscriptions, orders, walletTransactions, skippedDeliveries, reviews] = await Promise.all([
+    const [users, products, subscriptions, orders, walletTransactions, skippedDeliveries, reviews, slotRequests] = await Promise.all([
       fetchCol<RawUser>('users'),
       fetchCol<RawProduct>('products'),
       fetchCol<RawSubscription>('subscriptions'),
       fetchCol<RawOrder>('orders'),
       fetchCol<RawWalletTransaction>('walletTransactions'),
       fetchCol<RawSkippedDelivery>('skippedDeliveries'),
-      fetchCol<RawReview>('reviews')
+      fetchCol<RawReview>('reviews'),
+      fetchCol<RawSlotRequest>('customer_slot_requests')
     ]);
 
     // Format display IDs locally without running Firestore write transactions during reads
@@ -303,6 +321,7 @@ export async function fetchAllAnalyticsRawData(forceRefresh = false): Promise<An
       walletTransactions,
       skippedDeliveries,
       reviews,
+      slotRequests: slotRequests || [],
       fetchedAt: new Date()
     };
     lastFetchTime = now;
@@ -324,30 +343,63 @@ export async function runDatabaseDiagnostics(): Promise<DiagnosticsState> {
       orders: { status: 'OK', count: 0 },
       walletTransactions: { status: 'OK', count: 0 },
       skippedDeliveries: { status: 'OK', count: 0 },
-      reviews: { status: 'OK', count: 0 }
+      reviews: { status: 'OK', count: 0 },
+      slotRequests: { status: 'OK', count: 0 }
     }
   };
 
-  const testCol = async (colName: keyof DiagnosticsState['queries']) => {
+  const testCol = async (colName: string, key: keyof DiagnosticsState['queries']) => {
     try {
-      const snap = await getDocs(collection(db, colName as string));
-      diag.queries[colName] = { status: 'OK', count: snap.docs.length };
+      const snap = await getDocs(collection(db, colName));
+      diag.queries[key] = { status: 'OK', count: snap.docs.length };
     } catch (err: any) {
-      diag.queries[colName] = { status: 'FAILED', count: 0, error: err.message };
+      diag.queries[key] = { status: 'FAILED', count: 0, error: err.message };
     }
   };
 
   await Promise.all([
-    testCol('users'),
-    testCol('products'),
-    testCol('subscriptions'),
-    testCol('orders'),
-    testCol('walletTransactions'),
-    testCol('skippedDeliveries'),
-    testCol('reviews')
+    testCol('users', 'users'),
+    testCol('products', 'products'),
+    testCol('subscriptions', 'subscriptions'),
+    testCol('orders', 'orders'),
+    testCol('walletTransactions', 'walletTransactions'),
+    testCol('skippedDeliveries', 'skippedDeliveries'),
+    testCol('reviews', 'reviews'),
+    testCol('customer_slot_requests', 'slotRequests')
   ]);
 
   return diag;
+}
+
+export interface SlotRequestMetrics {
+  totalRequests: number;
+  newRequestsCount: number;
+  pendingRequestsCount: number;
+  completedRequestsCount: number;
+}
+
+export function computeSlotRequestMetrics(slotRequests: RawSlotRequest[] = []): SlotRequestMetrics {
+  let newRequestsCount = 0;
+  let pendingRequestsCount = 0;
+  let completedRequestsCount = 0;
+
+  slotRequests.forEach((req) => {
+    const s = (req.status || 'NEW').toUpperCase().trim();
+    if (s === 'NEW') {
+      newRequestsCount++;
+    } else if (s === 'PENDING') {
+      pendingRequestsCount++;
+    } else if (s === 'COMPLETED' || s === 'APPROVED' || s === 'FULFILLED') {
+      completedRequestsCount++;
+    }
+  });
+
+  return {
+    totalRequests: slotRequests.length,
+    newRequestsCount,
+    pendingRequestsCount,
+    completedRequestsCount
+  };
 }
 
 /* ==================== CALCULATED METRICS ENGINES ==================== */
